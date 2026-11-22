@@ -392,8 +392,80 @@
       .specs th { padding-bottom: 4px; }
       .specs td { padding-top: 0; }
     }
+    /* ---------- Motion ---------- */
+    :root { --ease-out: cubic-bezier(0.22, 1, 0.36, 1); }
+
+    /* Hero entrance */
+    @keyframes face-in {
+      from { opacity: 0; transform: translateX(-60px) scale(1.04); filter: blur(6px); }
+      to   { opacity: 1; transform: none; filter: none; }
+    }
+    @keyframes rise-in {
+      from { opacity: 0; transform: translateY(28px); filter: blur(4px); }
+      to   { opacity: 1; transform: none; filter: none; }
+    }
+    .hero-face {
+      animation: face-in 1.4s var(--ease-out) both;
+      translate: 0 var(--face-y, 0px);
+      will-change: translate;
+    }
+    .hero .kicker,
+    .hero h1,
+    .hero .hero-lead,
+    .hero .hero-actions { animation: rise-in 1s var(--ease-out) both; }
+    .hero .kicker       { animation-delay: 0.35s; }
+    .hero h1            { animation-delay: 0.5s; }
+    .hero .hero-lead    { animation-delay: 0.7s; }
+    .hero .hero-actions { animation-delay: 0.9s; }
+    .hero > div { translate: 0 var(--text-y, 0px); }
+
+    /* Statement: words light up while scrolling */
+    .statement .w { opacity: 0.18; transition: opacity 0.25s linear; }
+    .statement .w.on { opacity: 1; }
+
+    /* Scroll reveal (only when JS is running) */
+    .js .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out);
+      transition-delay: var(--d, 0s);
+    }
+    .js .reveal.in { opacity: 1; transform: none; }
+
+    /* Project bullets: dots pop in one after another */
+    .js .project li::before { transform: scale(0); transition: transform 0.5s var(--ease-out); transition-delay: var(--d, 0s); }
+    .js .project.in li::before { transform: scale(1); }
+
+    /* Hover lift on cards */
+    .skill, .role, .fact, .chip {
+      transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out), background 0.2s;
+    }
+    .skill:hover, .role:hover, .fact:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
+    }
+    .chip:hover { transform: translateY(-2px); }
+
+    /* Section progress line in the nav */
+    .nav::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -1px;
+      height: 2px;
+      width: 100%;
+      background: #0071e3;
+      transform-origin: left;
+      transform: scaleX(var(--progress, 0));
+    }
+
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .hero-face, .hero > div { translate: none !important; }
+      .js .reveal { opacity: 1; transform: none; }
+      .js .project li::before { transform: none; }
+      .statement .w { opacity: 1; }
     }
   </style>
 </head>
@@ -599,5 +671,86 @@
   </main>
 
   <footer>Danó Dániel · Automatizálás mérnök</footer>
+
+  <script>
+  (function () {
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var root = document.documentElement;
+    if (reduce) return;
+    root.classList.add('js');
+
+    // 1. Scroll reveal, with a small stagger inside each group
+    var groups = [
+      '.section-label', 'h2', '.project', '.bento .skill', '.roles .role',
+      '.specs tr', '.facts .fact', '.contact-lead', '.contact-grid .chip'
+    ];
+    groups.forEach(function (sel) {
+      var items = document.querySelectorAll('section:not(.hero) ' + sel);
+      items.forEach(function (el) {
+        var siblings = Array.prototype.filter.call(el.parentNode.children, function (c) { return c.matches(sel.split(' ').pop()); });
+        el.classList.add('reveal');
+        el.style.setProperty('--d', (siblings.indexOf(el) % 4) * 0.09 + 's');
+      });
+    });
+    document.querySelectorAll('.project').forEach(function (p) {
+      p.querySelectorAll('li').forEach(function (li, i) { li.style.setProperty('--d', 0.3 + i * 0.08 + 's'); });
+    });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+
+    // 2. Statement: wrap each word so it can light up
+    var statement = document.querySelector('.statement p');
+    var words = [];
+    (function wrap(node) {
+      Array.prototype.slice.call(node.childNodes).forEach(function (n) {
+        if (n.nodeType === 3) {
+          var frag = document.createDocumentFragment();
+          n.textContent.split(/(\s+)/).forEach(function (part) {
+            if (!part) return;
+            if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+            var s = document.createElement('span');
+            s.className = 'w';
+            s.textContent = part;
+            words.push(s);
+            frag.appendChild(s);
+          });
+          n.parentNode.replaceChild(frag, n);
+        } else if (n.nodeType === 1) { wrap(n); }
+      });
+    })(statement);
+
+    // 3. Scroll-driven effects: parallax, word highlight, progress line
+    var hero = document.querySelector('.hero');
+    var nav = document.querySelector('.nav');
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var y = window.scrollY;
+      var vh = window.innerHeight;
+
+      if (y < hero.offsetHeight) {
+        hero.style.setProperty('--face-y', (y * 0.25).toFixed(1) + 'px');
+        hero.style.setProperty('--text-y', (y * 0.12).toFixed(1) + 'px');
+      }
+
+      var r = statement.getBoundingClientRect();
+      var p = (vh * 0.85 - r.top) / (vh * 0.85 - vh * 0.35 + r.height * 0.4);
+      p = Math.max(0, Math.min(1, p));
+      var lit = Math.round(p * words.length);
+      words.forEach(function (w, i) { w.classList.toggle('on', i < lit); });
+
+      var max = document.documentElement.scrollHeight - vh;
+      nav.style.setProperty('--progress', max > 0 ? (y / max).toFixed(4) : 0);
+    }
+    function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    update();
+  })();
+  </script>
 </body>
 </html>
