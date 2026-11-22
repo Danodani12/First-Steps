@@ -78,7 +78,29 @@
         radial-gradient(1200px 600px at 50% -10%, #d6e4ff 0%, rgba(255, 255, 255, 0) 60%),
         radial-gradient(900px 500px at 80% 110%, #f3e8ff 0%, rgba(255, 255, 255, 0) 55%),
         linear-gradient(180deg, #fbfbfd 0%, #ffffff 100%);
+      position: relative;
+      overflow: hidden;
+      --face-w: min(40vw, calc((100vh - var(--nav)) * 0.42));
+      padding-left: calc(var(--face-w) + 24px);
     }
+    .hero-face {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      height: 100%;
+      width: var(--face-w);
+      object-fit: cover;
+      object-position: left top;
+      /* the photo's white background melts into the hero gradient */
+      mix-blend-mode: multiply;
+      -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 96%), linear-gradient(90deg, #000 75%, transparent 100%);
+      -webkit-mask-composite: source-in;
+      mask-image: linear-gradient(180deg, #000 70%, transparent 96%), linear-gradient(90deg, #000 75%, transparent 100%);
+      mask-composite: intersect;
+      pointer-events: none;
+      user-select: none;
+    }
+    .hero > div { position: relative; }
     .kicker {
       margin: 0 0 14px;
       font-size: 21px;
@@ -341,6 +363,21 @@
     }
 
     @media (max-width: 860px) {
+      .hero {
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: 0 18px 72px;
+        min-height: auto;
+      }
+      .hero-face {
+        position: static;
+        align-self: flex-start;
+        margin-left: -18px;
+        width: auto;
+        height: 52vh;
+        max-height: 460px;
+        margin-bottom: 8px;
+      }
       .nav { padding: 0 16px; }
       .nav-links { gap: 14px; }
       .bento, .roles, .facts { grid-template-columns: 1fr; }
@@ -373,6 +410,7 @@
 
   <main id="top">
     <section class="hero">
+      <img class="hero-face" src="images/dano-daniel-half-face.webp" alt="Danó Dániel portréja" width="640" height="1520" fetchpriority="high">
       <div>
         <p class="kicker">Automatizálás mérnök</p>
         <h1>Danó Dániel</h1>
